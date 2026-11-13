@@ -64,7 +64,7 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 			.andExpect(jsonPath("$.tokenType").value("Bearer"))
 			.andExpect(jsonPath("$.password").doesNotExist())
 			.andReturn().getResponse().getContentAsString();
-			String token = objectMapper.readTree(response).get("token").asText();
+			String token = objectMapper.readTree(response).get("token").asString();
 
 			mockMvc.perform(get("/hello").header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk());
@@ -99,7 +99,7 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 			.andExpect(jsonPath("$.token", not(blankOrNullString())))
 			.andExpect(jsonPath("$.password").doesNotExist())
 			.andReturn().getResponse().getContentAsString();
-		String token = objectMapper.readTree(response).get("token").asText();
+		String token = objectMapper.readTree(response).get("token").asString();
 		mockMvc.perform(get("/hello").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
 		mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(registration))
 			.andExpect(status().isBadRequest())
@@ -122,7 +122,7 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 			.contentType(MediaType.APPLICATION_JSON)
 			.content("{\"correo\":\"admin@empresa.com\",\"password\":\"Password123!\"}"))
 			.andReturn().getResponse().getContentAsString();
-		String[] tokenParts = objectMapper.readTree(response).get("token").asText().split("\\.");
+		String[] tokenParts = objectMapper.readTree(response).get("token").asString().split("\\.");
 		tokenParts[2] = (tokenParts[2].startsWith("A") ? "B" : "A") + tokenParts[2].substring(1);
 		mockMvc.perform(get("/hello").header("Authorization", "Bearer " + String.join(".", tokenParts)))
 			.andExpect(status().isUnauthorized());
