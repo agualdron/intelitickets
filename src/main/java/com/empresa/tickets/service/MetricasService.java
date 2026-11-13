@@ -11,9 +11,9 @@ import com.empresa.tickets.entity.enums.PrioridadTicket;
 import com.empresa.tickets.entity.enums.Rol;
 import com.empresa.tickets.exception.ReglaNegocioException;
 import com.empresa.tickets.repository.TicketRepository;
+import com.empresa.tickets.security.ActorAutenticadoProvider;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MetricasService {
 
 	private final TicketRepository ticketRepository;
+	private final ActorAutenticadoProvider actorAutenticadoProvider;
 
-	public MetricasService(TicketRepository ticketRepository) {
+	public MetricasService(TicketRepository ticketRepository, ActorAutenticadoProvider actorAutenticadoProvider) {
 		this.ticketRepository = ticketRepository;
+		this.actorAutenticadoProvider = actorAutenticadoProvider;
 	}
 
 	@Transactional(readOnly = true)
@@ -50,8 +52,7 @@ public class MetricasService {
 	}
 
 	private boolean esAdmin() {
-		return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-				.anyMatch(authority -> authority.getAuthority().equals("ROLE_" + Rol.ADMIN.name()));
+		return actorAutenticadoProvider.obtenerActor().getRol() == Rol.ADMIN;
 	}
 
 	private EnumMap<EstadoTicket, Long> todosLosEstados() {

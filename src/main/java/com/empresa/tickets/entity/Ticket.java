@@ -19,6 +19,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -81,6 +82,11 @@ public class Ticket {
 		}
 	}
 
+	@PreUpdate
+	void actualizarFechaPersistida() {
+		fechaActualizacion = LocalDateTime.now();
+	}
+
 	protected Ticket() {
 	}
 
@@ -114,15 +120,9 @@ public class Ticket {
 
 	public void asignarTecnico(Usuario tecnico) {
 		this.tecnicoAsignado = tecnico;
-		actualizarFecha();
 	}
 
 	public void cambiarEstado(EstadoTicket estado) {
 		this.estado = estado;
-		actualizarFecha();
-	}
-
-	private void actualizarFecha() {
-		this.fechaActualizacion = LocalDateTime.now();
 	}
 }

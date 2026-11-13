@@ -25,12 +25,10 @@ import com.empresa.tickets.repository.HistorialEstadoRepository;
 import com.empresa.tickets.repository.TicketRepository;
 import com.empresa.tickets.repository.TicketSpecification;
 import com.empresa.tickets.repository.UsuarioRepository;
+import com.empresa.tickets.security.ActorAutenticadoProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,14 +43,17 @@ public class TicketService {
 	private final HistorialEstadoRepository historialRepository;
 	private final AnalizadorTicketService analizador;
 	private final TicketMapper mapper;
+	private final ActorAutenticadoProvider actorAutenticadoProvider;
 
 	public TicketService(TicketRepository ticketRepository, UsuarioRepository usuarioRepository,
-			HistorialEstadoRepository historialRepository, AnalizadorTicketService analizador, TicketMapper mapper) {
+			HistorialEstadoRepository historialRepository, AnalizadorTicketService analizador, TicketMapper mapper,
+			ActorAutenticadoProvider actorAutenticadoProvider) {
 		this.ticketRepository = ticketRepository;
 		this.usuarioRepository = usuarioRepository;
 		this.historialRepository = historialRepository;
 		this.analizador = analizador;
 		this.mapper = mapper;
+		this.actorAutenticadoProvider = actorAutenticadoProvider;
 	}
 
 	@Transactional
@@ -193,20 +194,6 @@ public class TicketService {
 	}
 
 	private Usuario usuarioAutenticado() {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !authentication.isAuthenticated()) {
-			throw new org.springframework.security.access.AccessDeniedException("Autenticación requerida");
-		}
-		String correo = authentication.getName();
-		Usuario usuario = usuarioRepository.findByCorreoIgnoreCase(correo)
-				.orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado"));
-		Rol rol = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
-				.filter(authority -> authority.startsWith("ROLE_"))
-				.map(authority -> Rol.valueOf(authority.substring(5))).findFirst()
-				.orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Rol requerido"));
-		if (usuario.getRol() != rol) {
-			throw new org.springframework.security.access.AccessDeniedException("El rol autenticado no coincide");
-		}
-		return usuario;
+		return actorAutenticadoProvider.obtenerActor();
 	}
 }

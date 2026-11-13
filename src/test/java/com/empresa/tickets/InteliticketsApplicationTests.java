@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -93,7 +94,8 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 		String response = mockMvc.perform(post("/api/auth/register")
 			.contentType(MediaType.APPLICATION_JSON)
 			.content(registration))
-			.andExpect(status().isOk())
+			.andExpect(status().isCreated())
+			.andExpect(header().doesNotExist("Location"))
 			.andExpect(jsonPath("$.rol").value("USUARIO"))
 			.andExpect(jsonPath("$.correo").value("nueva.persona@empresa.com"))
 			.andExpect(jsonPath("$.token", not(blankOrNullString())))
@@ -104,6 +106,32 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 		mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(registration))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.path").value("/api/auth/register"));
+	}
+
+	@Test
+	void pageableSizeIsValidatedAndClampedGlobally() throws Exception {
+		String token = tokenWithRole("admin@empresa.com", "ADMIN", System.currentTimeMillis() + 60_000);
+		mockMvc.perform(get("/api/tickets").param("size", "1000")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.size").value(1000));
+		mockMvc.perform(get("/api/tickets").param("size", "1001")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.size").value(1000));
+		mockMvc.perform(get("/api/tickets").param("size", "not-a-number")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.status").value(400))
+			.andExpect(jsonPath("$.path").value("/api/tickets"));
+	}
+
+	@Test
+	void persistedRoleOverridesRoleClaimInJwt() throws Exception {
+		String token = tokenWithRole("laura.gomez@empresa.com", "ADMIN", System.currentTimeMillis() + 60_000);
+		mockMvc.perform(get("/test/principal").header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.authorities[0]").value("ROLE_USUARIO"));
 	}
 
 	@Test
@@ -141,8 +169,12 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 	}
 
 	private String tokenWithExpiration(long expiration) {
+		return tokenWithRole("admin@empresa.com", "ADMIN", expiration);
+	}
+
+	private String tokenWithRole(String subject, String role, long expiration) {
 		long now = System.currentTimeMillis() - 10_000;
-		return Jwts.builder().subject("admin@empresa.com").claim("role", "ADMIN")
+		return Jwts.builder().subject(subject).claim("role", role)
 			.issuedAt(new Date(now)).expiration(new Date(expiration))
 			.signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8))).compact();
 	}

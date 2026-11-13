@@ -16,7 +16,6 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -67,26 +66,22 @@ public class TicketController {
 	}
 
 	@PatchMapping("/{id}/estado")
-	@PreAuthorize("hasAnyRole('ADMIN', 'SOPORTE')")
 	public TicketResponse cambiarEstado(@PathVariable Long id, @Valid @RequestBody ActualizarEstadoRequest request) {
 		return ticketService.cambiarEstado(id, request);
 	}
 
 	@PatchMapping("/{id}/asignar")
-	@PreAuthorize("hasAnyRole('ADMIN', 'SOPORTE')")
 	public TicketResponse asignar(@PathVariable Long id, @Valid @RequestBody AsignarTecnicoRequest request) {
 		return ticketService.asignar(id, request);
 	}
 
 	@DeleteMapping("/{id}")
-	@PreAuthorize("hasAnyRole('ADMIN', 'SOPORTE')")
 	public ResponseEntity<Void> eliminar(@PathVariable Long id) {
 		ticketService.eliminar(id);
 		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/metricas")
-	@PreAuthorize("hasAnyRole('ADMIN', 'SOPORTE')")
 	public MetricasTicketsResponse metricas(@RequestParam(required = false) EstadoTicket estado) {
 		return metricasService.obtener(estado);
 	}

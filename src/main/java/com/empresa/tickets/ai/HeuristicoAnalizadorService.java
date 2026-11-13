@@ -38,7 +38,8 @@ public class HeuristicoAnalizadorService implements AnalizadorTicketService {
 			resultadoEtiquetas = new ArrayList<>(resultadoEtiquetas.subList(0, MAX_ETIQUETAS - 1));
 			resultadoEtiquetas.add(ETIQUETA_ANALISIS_HEURISTICO);
 		}
-		return new AnalisisTicketResponse(categoria, prioridad, resumir(texto), resultadoEtiquetas);
+		return AnalisisTicketValidator.validar(
+			new AnalisisTicketResponse(categoria, prioridad, resumir(texto), resultadoEtiquetas));
 	}
 
 	private CategoriaTicket clasificarCategoria(String textoOriginal) {

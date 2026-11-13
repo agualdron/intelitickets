@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 
 import com.empresa.tickets.entity.HistorialEstadoTicket;
 import com.empresa.tickets.entity.Ticket;
@@ -35,6 +37,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,6 +65,7 @@ class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {
 	@Autowired ObjectMapper objectMapper;
 	@Autowired JdbcTemplate jdbcTemplate;
 	@Autowired PlatformTransactionManager transactionManager;
+	@PersistenceContext EntityManager entityManager;
 	private Usuario admin;
 	private Usuario soporte;
 	private Usuario laura;
@@ -162,11 +168,17 @@ class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {
 	@Test
 	void apiProtegeMetricasYExponeOpenApiBearer() throws Exception {
 		var adminToken = jwtService.generarToken(admin);
+		var soporteToken = jwtService.generarToken(soporte);
 		var userToken = jwtService.generarToken(laura);
 		mockMvc.perform(get("/api/tickets/metricas").header("Authorization", "Bearer " + userToken))
 				.andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403));
 		mockMvc.perform(get("/api/tickets/metricas").header("Authorization", "Bearer " + adminToken))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.porEstado.ABIERTO").value(0));
+		mockMvc.perform(get("/api/tickets/metricas").header("Authorization", "Bearer " + soporteToken))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/tickets/metricas").param("estado", "ELIMINADO")
+				.header("Authorization", "Bearer " + soporteToken))
+				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/api/tickets").param("estado", "INVALID")
 				.header("Authorization", "Bearer " + adminToken))
 				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
@@ -174,6 +186,64 @@ class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {
 				.andExpect(jsonPath("$.path").value("/api/tickets"));
 		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
 				.andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"));
+	}
+
+	@Test
+	void preservesTicketOperationPermissionsForUserSupportAndAdmin() throws Exception {
+		var supportToken = jwtService.generarToken(soporte);
+		var userToken = jwtService.generarToken(laura);
+		var adminToken = jwtService.generarToken(admin);
+		String supportCreated = mockMvc.perform(post("/api/tickets")
+				.header("Authorization", "Bearer " + supportToken).contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"titulo":"Solicitud de soporte","descripcion":"Solicitud creada por soporte para otro usuario.",
+					 "usuarioId":%d,"categoria":"SOFTWARE","prioridad":"MEDIA"}
+					""".formatted(admin.getId())))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		long supportCreatedId = objectMapper.readTree(supportCreated).get("id").asLong();
+		mockMvc.perform(post("/api/tickets").header("Authorization", "Bearer " + userToken)
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"titulo":"Ticket propio de usuario","descripcion":"Una solicitud creada por la persona autenticada.",
+					 "categoria":"SOFTWARE","prioridad":"BAJA"}
+					"""))
+			.andExpect(status().isCreated());
+
+		mockMvc.perform(get("/api/tickets").header("Authorization", "Bearer " + supportToken))
+			.andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2));
+		mockMvc.perform(get("/api/tickets/{id}", supportCreatedId)
+				.header("Authorization", "Bearer " + supportToken))
+			.andExpect(status().isOk());
+		mockMvc.perform(get("/api/tickets/{id}", supportCreatedId)
+				.header("Authorization", "Bearer " + userToken))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(patch("/api/tickets/{id}/estado", supportCreatedId)
+				.header("Authorization", "Bearer " + userToken).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"estado\":\"EN_PROCESO\"}"))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(patch("/api/tickets/{id}/asignar", supportCreatedId)
+				.header("Authorization", "Bearer " + userToken).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"tecnicoId\":" + soporte.getId() + "}"))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.delete("/api/tickets/{id}", supportCreatedId).header("Authorization", "Bearer " + userToken))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(patch("/api/tickets/{id}/estado", supportCreatedId)
+				.header("Authorization", "Bearer " + supportToken).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"estado\":\"EN_PROCESO\"}"))
+			.andExpect(status().isOk());
+		mockMvc.perform(patch("/api/tickets/{id}/asignar", supportCreatedId)
+				.header("Authorization", "Bearer " + supportToken).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"tecnicoId\":" + soporte.getId() + "}"))
+			.andExpect(status().isOk());
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.delete("/api/tickets/{id}", supportCreatedId).header("Authorization", "Bearer " + supportToken))
+			.andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/tickets").param("estado", "ELIMINADO")
+				.header("Authorization", "Bearer " + adminToken))
+			.andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(supportCreatedId));
+		mockMvc.perform(get("/api/tickets/metricas").param("estado", "ELIMINADO")
+				.header("Authorization", "Bearer " + adminToken))
+			.andExpect(status().isOk()).andExpect(jsonPath("$.porEstado.ELIMINADO").value(1));
 	}
 
 	@Test
@@ -313,6 +383,52 @@ class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {
 		assertEquals(2, completeHistory.size());
 		assertEquals(EstadoTicket.EN_PROCESO, completeHistory.getLast().getEstadoAnterior());
 		assertEquals(EstadoTicket.ELIMINADO, completeHistory.getLast().getEstadoNuevo());
+	}
+
+	@Test
+	void postgresRejectsInvalidTicketAndHistoryEnumValues() {
+		var ticket = crearTicket("Valores permitidos", "Ticket para verificar constraints de PostgreSQL.", laura,
+			CategoriaTicket.HARDWARE, PrioridadTicket.MEDIA, EstadoTicket.ABIERTO, List.of("hardware"));
+		var history = historialRepository.saveAndFlush(
+			new HistorialEstadoTicket(ticket, null, EstadoTicket.ABIERTO, admin, "Creación"));
+
+		assertThrows(DataIntegrityViolationException.class,
+			() -> jdbcTemplate.update("UPDATE tickets SET estado = 'INVALIDO' WHERE id = ?", ticket.getId()));
+		assertThrows(DataIntegrityViolationException.class,
+			() -> jdbcTemplate.update("UPDATE tickets SET categoria = 'INVALIDA' WHERE id = ?", ticket.getId()));
+		assertThrows(DataIntegrityViolationException.class,
+			() -> jdbcTemplate.update("UPDATE tickets SET prioridad = 'INVALIDA' WHERE id = ?", ticket.getId()));
+		assertThrows(DataIntegrityViolationException.class,
+			() -> jdbcTemplate.update("UPDATE historial_estados_ticket SET estado_anterior = 'INVALIDO' WHERE id = ?",
+				history.getId()));
+		assertThrows(DataIntegrityViolationException.class,
+			() -> jdbcTemplate.update("UPDATE historial_estados_ticket SET estado_nuevo = 'INVALIDO' WHERE id = ?",
+				history.getId()));
+	}
+
+	@Test
+	void preUpdateRefreshesTimestampForAnyJpaMutation() throws Exception {
+		var ticket = crearTicket("Mutación de entidad", "Ticket para comprobar callback JPA de actualización.", laura,
+			CategoriaTicket.SOFTWARE, PrioridadTicket.MEDIA, EstadoTicket.ABIERTO, List.of("software"));
+		LocalDateTime anterior = ticket.getFechaActualizacion();
+		Thread.sleep(20);
+		var tx = new TransactionTemplate(transactionManager);
+
+		tx.executeWithoutResult(status -> {
+			Ticket managed = entityManager.find(Ticket.class, ticket.getId());
+			try {
+				Field titulo = Ticket.class.getDeclaredField("titulo");
+				titulo.setAccessible(true);
+				titulo.set(managed, "Título actualizado sin método de dominio");
+				entityManager.flush();
+			}
+			catch (ReflectiveOperationException exception) {
+				throw new IllegalStateException(exception);
+			}
+			assertTrue(managed.getFechaActualizacion().isAfter(anterior));
+		});
+
+		assertTrue(ticketRepository.findById(ticket.getId()).orElseThrow().getFechaActualizacion().isAfter(anterior));
 	}
 
 	private Ticket crearTicket(String titulo, String descripcion, Usuario solicitante, CategoriaTicket categoria,
