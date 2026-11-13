@@ -47,6 +47,13 @@ public class Usuario {
 	protected Usuario() {
 	}
 
+	public Usuario(String nombre, String correo, String password, Rol rol) {
+		this.nombre = nombre;
+		this.correo = correo;
+		this.password = password;
+		this.rol = rol;
+	}
+
 	public Long getId() {
 		return id;
 	}
