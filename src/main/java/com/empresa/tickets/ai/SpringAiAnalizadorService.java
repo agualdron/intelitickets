@@ -29,6 +29,8 @@ public class SpringAiAnalizadorService implements AnalizadorTicketService {
 			.system("Analiza solicitudes de soporte técnico. Devuelve solo una clasificación estructurada. "
 				+ "categoria debe ser uno de HARDWARE, SOFTWARE, CONECTIVIDAD, ACCESOS, OTRO; "
 				+ "prioridad debe ser uno de BAJA, MEDIA, ALTA, CRITICA. "
+				+ "criterios de categoría: CONECTIVIDAD (red, internet, Wi-Fi, VPN, latencia), ACCESOS (credenciales, contraseñas, permisos, bloqueos de cuenta, MFA), HARDWARE (fallos físicos, equipos, periféricos, energía, impresoras), SOFTWARE (errores de aplicaciones, SO, instalaciones, licencias, ofimática), OTRO (consultas administrativas o casos generales no técnicos). "
+				+ "criterios de prioridad: CRITICA (parada total, impacto masivo a múltiples usuarios o brecha de seguridad), ALTA (impide trabajar a un usuario o afecta una entrega/reunión inminente), MEDIA (incidente operativo puntual donde el usuario aún puede trabajar parcialmente), BAJA (consultas, dudas, mejoras o tareas planificadas sin urgencia). "
 				+ "Escribe un resumen breve y no más de cinco etiquetas útiles.")
 			.user("Título: " + valor(titulo) + "\nDescripción: " + valor(descripcion))
 			.call()

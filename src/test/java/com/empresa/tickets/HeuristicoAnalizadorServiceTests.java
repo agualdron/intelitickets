@@ -37,7 +37,7 @@ class HeuristicoAnalizadorServiceTests {
 		AnalisisTicketResponse response = service.analizar("Consulta general", "Necesito ayuda con una solicitud.");
 
 		assertEquals(CategoriaTicket.OTRO, response.categoria());
-		assertEquals(PrioridadTicket.MEDIA, response.prioridad());
+		assertEquals(PrioridadTicket.BAJA, response.prioridad());
 		assertEquals("Consulta general. Necesito ayuda con una solicitud.", response.resumen());
 	}
 
