@@ -1,7 +1,6 @@
 package com.empresa.tickets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -74,6 +73,10 @@ class TicketServiceTests {
 		assertEquals("Clasificación manual proporcionada por el usuario.", response.resumenIA());
 		assertEquals(List.of("clasificacion-manual"), response.etiquetasIA());
 		verify(analizador, never()).analizar(any(), any());
+		var savedTicket = ArgumentCaptor.forClass(Ticket.class);
+		verify(ticketRepository).save(savedTicket.capture());
+		assertEquals(CategoriaTicket.HARDWARE, savedTicket.getValue().getCategoria());
+		assertEquals(PrioridadTicket.ALTA, savedTicket.getValue().getPrioridad());
 		var event = ArgumentCaptor.forClass(HistorialEstadoTicket.class);
 		verify(historialRepository).save(event.capture());
 		assertEquals(null, event.getValue().getEstadoAnterior());
@@ -93,7 +96,11 @@ class TicketServiceTests {
 		assertEquals(CategoriaTicket.HARDWARE, response.categoria());
 		assertEquals(PrioridadTicket.CRITICA, response.prioridad());
 		assertEquals("No conecta", response.resumenIA());
-		assertNotNull(response.etiquetasIA());
+		assertEquals(List.of("red"), response.etiquetasIA());
 		verify(analizador).analizar(request.titulo(), request.descripcion());
+		var savedTicket = ArgumentCaptor.forClass(Ticket.class);
+		verify(ticketRepository).save(savedTicket.capture());
+		assertEquals(CategoriaTicket.HARDWARE, savedTicket.getValue().getCategoria());
+		assertEquals(PrioridadTicket.CRITICA, savedTicket.getValue().getPrioridad());
 	}
 }

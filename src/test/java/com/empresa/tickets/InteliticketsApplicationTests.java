@@ -16,7 +16,6 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,25 +24,17 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {
 	"security.jwt.secret=phase-two-test-secret-with-at-least-32-bytes",
 	"security.jwt.expiration-ms=86400000"
 })
-@Testcontainers
 @AutoConfigureMockMvc
 @Import(InteliticketsApplicationTests.RoleProbe.class)
-class InteliticketsApplicationTests {
+class InteliticketsApplicationTests extends AbstractIntegrationTest {
 
 	private static final String JWT_SECRET = "phase-two-test-secret-with-at-least-32-bytes";
-
-	@Container
-	@ServiceConnection
-	static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
 	@Autowired
 	MockMvc mockMvc;

@@ -1,7 +1,6 @@
 package com.empresa.tickets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,7 +29,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
@@ -43,9 +41,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {
@@ -53,12 +48,7 @@ import tools.jackson.databind.ObjectMapper;
 	"security.jwt.expiration-ms=86400000"
 })
 @AutoConfigureMockMvc
-@Testcontainers
-class TicketPersistenceIntegrationTests {
-
-	@Container
-	@ServiceConnection
-	static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {
 
 	@Autowired TicketRepository ticketRepository;
 	@Autowired HistorialEstadoRepository historialRepository;
@@ -249,6 +239,80 @@ class TicketPersistenceIntegrationTests {
 				.header("Authorization", "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"tecnicoId\":%d}".formatted(soporte.getId())))
 			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void apiDevuelve404ParaTicketInexistente() throws Exception {
+		var adminToken = jwtService.generarToken(admin);
+
+		mockMvc.perform(get("/api/tickets/{id}", Long.MAX_VALUE)
+				.header("Authorization", "Bearer " + adminToken))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.status").value(404));
+	}
+
+	@Test
+	void usuarioNoPuedeConsultarTicketDeOtroSolicitante() throws Exception {
+		var ticket = crearTicket("Ticket de otro usuario", "Este ticket pertenece a otra cuenta de usuario.",
+				soporte, CategoriaTicket.SOFTWARE, PrioridadTicket.MEDIA, EstadoTicket.ABIERTO, List.of());
+		var userToken = jwtService.generarToken(laura);
+
+		mockMvc.perform(get("/api/tickets/{id}", ticket.getId())
+				.header("Authorization", "Bearer " + userToken))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.status").value(403));
+	}
+
+	@Test
+	void apiRechazaAsignacionATecnicosConRolUsuarioYAdmin() throws Exception {
+		var ticket = crearTicket("Asignación no válida", "Ticket usado para probar roles técnicos inválidos.",
+				laura, CategoriaTicket.SOFTWARE, PrioridadTicket.MEDIA, EstadoTicket.ABIERTO, List.of());
+		var adminToken = jwtService.generarToken(admin);
+
+		mockMvc.perform(patch("/api/tickets/{id}/asignar", ticket.getId())
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"tecnicoId\":" + laura.getId() + "}"))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(patch("/api/tickets/{id}/asignar", ticket.getId())
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"tecnicoId\":" + admin.getId() + "}"))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void cambioDeEstadoYBorradoLogicoConservanTicketEHistorial() throws Exception {
+		var ticket = crearTicket("Revisión de equipo", "El equipo requiere una revisión técnica detallada.",
+				laura, CategoriaTicket.HARDWARE, PrioridadTicket.ALTA, EstadoTicket.ABIERTO, List.of());
+		var adminToken = jwtService.generarToken(admin);
+
+		mockMvc.perform(patch("/api/tickets/{id}/estado", ticket.getId())
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"estado\":\"EN_PROCESO\",\"comentario\":\"Revisión iniciada\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.estado").value("EN_PROCESO"));
+
+		var estadoHistory = historialRepository.findAllByTicketIdOrderByFechaCambioAsc(ticket.getId());
+		assertEquals(1, estadoHistory.size());
+		assertEquals(EstadoTicket.ABIERTO, estadoHistory.getFirst().getEstadoAnterior());
+		assertEquals(EstadoTicket.EN_PROCESO, estadoHistory.getFirst().getEstadoNuevo());
+		assertEquals("Revisión iniciada", estadoHistory.getFirst().getComentario());
+
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.delete("/api/tickets/{id}", ticket.getId())
+				.header("Authorization", "Bearer " + adminToken))
+			.andExpect(status().isNoContent());
+
+		assertTrue(ticketRepository.findById(ticket.getId()).isPresent());
+		assertEquals(EstadoTicket.ELIMINADO,
+				ticketRepository.findById(ticket.getId()).orElseThrow().getEstado());
+		var completeHistory = historialRepository.findAllByTicketIdOrderByFechaCambioAsc(ticket.getId());
+		assertEquals(2, completeHistory.size());
+		assertEquals(EstadoTicket.EN_PROCESO, completeHistory.getLast().getEstadoAnterior());
+		assertEquals(EstadoTicket.ELIMINADO, completeHistory.getLast().getEstadoNuevo());
 	}
 
 	private Ticket crearTicket(String titulo, String descripcion, Usuario solicitante, CategoriaTicket categoria,

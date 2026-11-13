@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 import com.empresa.tickets.ai.HeuristicoAnalizadorService;
 import com.empresa.tickets.ai.AnalizadorTicketService;
@@ -59,6 +60,30 @@ class SpringAiAnalizadorServiceTests {
 				assertEquals(CategoriaTicket.CONECTIVIDAD, response.categoria());
 				assertEquals(PrioridadTicket.CRITICA, response.prioridad());
 				assertEquals("analisis-heuristico", response.etiquetas().getLast());
+				assertEquals(1, response.etiquetas().stream().filter("analisis-heuristico"::equals).count());
+				verify(chatClient, times(2)).prompt();
+			});
+	}
+
+	@Test
+	void recoversThroughHeuristicServiceWhenChatClientTimesOut() {
+		ChatClient chatClient = chatClientFailing(new IllegalStateException("provider timeout",
+				new TimeoutException("chat request timed out")));
+
+		new ApplicationContextRunner()
+			.withUserConfiguration(RetryTestConfiguration.class)
+			.withBean(ChatClient.class, () -> chatClient)
+			.withBean(HeuristicoAnalizadorService.class, HeuristicoAnalizadorService::new)
+			.run(context -> {
+				assertNull(context.getStartupFailure(), () -> "Context startup failed: " + context.getStartupFailure());
+				AnalizadorTicketService service = context.getBean("springAiAnalizadorService",
+					AnalizadorTicketService.class);
+				AnalisisTicketResponse response = service.analizar("WiFi caído", "No hay internet en la oficina.");
+
+				assertEquals(CategoriaTicket.CONECTIVIDAD, response.categoria());
+				assertEquals(PrioridadTicket.CRITICA, response.prioridad());
+				assertEquals("analisis-heuristico", response.etiquetas().getLast());
+				assertEquals(1, response.etiquetas().stream().filter("analisis-heuristico"::equals).count());
 				verify(chatClient, times(2)).prompt();
 			});
 	}
@@ -122,6 +147,10 @@ class SpringAiAnalizadorServiceTests {
 	}
 
 	private ChatClient chatClientFailing() {
+		return chatClientFailing(new IllegalStateException("provider timeout"));
+	}
+
+	private ChatClient chatClientFailing(RuntimeException failure) {
 		ChatClient chatClient = mock(ChatClient.class);
 		ChatClient.ChatClientRequestSpec request = mock(ChatClient.ChatClientRequestSpec.class);
 		ChatClient.CallResponseSpec call = mock(ChatClient.CallResponseSpec.class);
@@ -129,7 +158,7 @@ class SpringAiAnalizadorServiceTests {
 		when(request.system(anyString())).thenReturn(request);
 		when(request.user(anyString())).thenReturn(request);
 		when(request.call()).thenReturn(call);
-		when(call.entity(AnalisisTicketResponse.class)).thenThrow(new IllegalStateException("provider timeout"));
+		when(call.entity(AnalisisTicketResponse.class)).thenThrow(failure);
 		return chatClient;
 	}
 
