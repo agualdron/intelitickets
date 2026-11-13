@@ -2,6 +2,7 @@ package com.empresa.tickets.entity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.empresa.tickets.entity.enums.CategoriaTicket;
@@ -83,7 +84,45 @@ public class Ticket {
 	protected Ticket() {
 	}
 
+	public Ticket(String titulo, String descripcion, CategoriaTicket categoria, PrioridadTicket prioridad,
+			Usuario usuarioSolicitante, String resumenIA, List<String> etiquetasIA) {
+		this.titulo = titulo;
+		this.descripcion = descripcion;
+		this.categoria = categoria;
+		this.prioridad = prioridad;
+		this.estado = EstadoTicket.ABIERTO;
+		this.usuarioSolicitante = usuarioSolicitante;
+		this.resumenIA = resumenIA;
+		this.etiquetasIA = new ArrayList<>(etiquetasIA);
+	}
+
 	public Long getId() {
 		return id;
+	}
+
+	public String getTitulo() { return titulo; }
+	public String getDescripcion() { return descripcion; }
+	public CategoriaTicket getCategoria() { return categoria; }
+	public PrioridadTicket getPrioridad() { return prioridad; }
+	public EstadoTicket getEstado() { return estado; }
+	public Usuario getUsuarioSolicitante() { return usuarioSolicitante; }
+	public Usuario getTecnicoAsignado() { return tecnicoAsignado; }
+	public String getResumenIA() { return resumenIA; }
+	public List<String> getEtiquetasIA() { return Collections.unmodifiableList(etiquetasIA); }
+	public LocalDateTime getFechaCreacion() { return fechaCreacion; }
+	public LocalDateTime getFechaActualizacion() { return fechaActualizacion; }
+
+	public void asignarTecnico(Usuario tecnico) {
+		this.tecnicoAsignado = tecnico;
+		actualizarFecha();
+	}
+
+	public void cambiarEstado(EstadoTicket estado) {
+		this.estado = estado;
+		actualizarFecha();
+	}
+
+	private void actualizarFecha() {
+		this.fechaActualizacion = LocalDateTime.now();
 	}
 }

@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,6 +35,13 @@ public class GlobalExceptionHandler {
 		String message = exception.getBindingResult().getFieldErrors().stream()
 			.map(this::mensajeCampo)
 			.collect(Collectors.joining("; "));
+		return respuesta(HttpStatus.BAD_REQUEST, message, request);
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ErrorResponse> tipoDeParametroInvalido(MethodArgumentTypeMismatchException exception,
+			HttpServletRequest request) {
+		String message = "Parámetro '" + exception.getName() + "' inválido";
 		return respuesta(HttpStatus.BAD_REQUEST, message, request);
 	}
 

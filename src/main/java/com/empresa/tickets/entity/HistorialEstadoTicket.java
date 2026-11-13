@@ -56,7 +56,23 @@ public class HistorialEstadoTicket {
 	protected HistorialEstadoTicket() {
 	}
 
+	public HistorialEstadoTicket(Ticket ticket, EstadoTicket estadoAnterior, EstadoTicket estadoNuevo,
+			Usuario usuarioModificador, String comentario) {
+		this.ticket = ticket;
+		this.estadoAnterior = estadoAnterior;
+		this.estadoNuevo = estadoNuevo;
+		this.usuarioModificador = usuarioModificador;
+		this.comentario = comentario;
+	}
+
 	public Long getId() {
 		return id;
 	}
+
+	public Ticket getTicket() { return ticket; }
+	public EstadoTicket getEstadoAnterior() { return estadoAnterior; }
+	public EstadoTicket getEstadoNuevo() { return estadoNuevo; }
+	public Usuario getUsuarioModificador() { return usuarioModificador; }
+	public String getComentario() { return comentario; }
+	public LocalDateTime getFechaCambio() { return fechaCambio; }
 }

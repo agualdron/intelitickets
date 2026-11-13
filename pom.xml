@@ -31,11 +31,23 @@
 		<spring-ai.version>2.0.2</spring-ai.version>
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>3.2.0</springdoc.version>
+		<swagger.version>2.2.55</swagger.version>
 		<spring-retry.version>2.0.13</spring-retry.version>
 		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
+			<!-- Keep SpringDoc's Swagger core and Spring AI's transitive annotations API-aligned. -->
+			<dependency>
+				<groupId>io.swagger.core.v3</groupId>
+				<artifactId>swagger-annotations</artifactId>
+				<version>${swagger.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.swagger.core.v3</groupId>
+				<artifactId>swagger-annotations-jakarta</artifactId>
+				<version>${swagger.version}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.springframework.ai</groupId>
 				<artifactId>spring-ai-bom</artifactId>
