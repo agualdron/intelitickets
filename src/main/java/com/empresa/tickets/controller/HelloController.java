@@ -1,4 +1,4 @@
-package intelitickets;
+package com.empresa.tickets.controller;
 
 import java.util.Map;
 
