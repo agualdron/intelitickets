@@ -92,6 +92,8 @@ La aplicación lee las siguientes variables. `.env.example` contiene valores de 
 | `AI_API_KEY` | Clave del proveedor de IA | `<api-key>` |
 | `AI_MODEL` | Modelo de chat | `gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Timeout de llamada de IA en milisegundos | `8000` |
+| `AI_RETRY_MAX_ATTEMPTS` | Intentos máximos para llamadas de IA con fallos transitorios | `2` |
+| `AI_RETRY_BACKOFF_MS` | Espera inicial entre reintentos, en milisegundos | `250` |
 | `CORS_ALLOWED_ORIGIN` | Origin único autorizado para solicitudes CORS del frontend | `http://localhost:5173` |
 
 `CORS_ALLOWED_ORIGIN` debe contener un origin completo, con esquema, host y puerto cuando aplique, sin ruta ni slash final. En producción configura el dominio público del frontend. El backend no usa un origin wildcard ni un valor alternativo.
@@ -137,6 +139,10 @@ docker compose down
 ```
 
 El servicio publica la API en `http://localhost:8080`. `docker compose down -v` también elimina el volumen de datos de PostgreSQL.
+
+## Documentación interactiva
+
+Con la aplicación en ejecución, Swagger UI está disponible en `http://localhost:8080/swagger-ui.html` y el contrato OpenAPI en `http://localhost:8080/v3/api-docs`. La documentación es pública; las operaciones protegidas siguen requiriendo un token JWT.
 
 ## Pruebas y compilación
 
@@ -238,4 +244,28 @@ curl -i -X DELETE http://localhost:8080/api/tickets/1 \
   -H "Authorization: Bearer $STAFF_TOKEN"
 ```
 
-La operación devuelve `204 No Content`. Los errores HTTP usan la estructura `ErrorResponse` con timestamp, status, error, message y path. La documentación OpenAPI está disponible en `/swagger-ui.html` y `/v3/api-docs`.
+### Gestión de usuarios
+
+La gestión de usuarios requiere rol `ADMIN`, excepto el listado de personal de soporte, que requiere `SOPORTE`. El alta administrativa crea una cuenta con rol `SOPORTE`; el registro público de `/api/auth/register` crea cuentas `USUARIO`. La eliminación de usuarios es lógica.
+
+```bash
+# Listar usuarios (ADMIN)
+curl -i 'http://localhost:8080/api/usuarios?page=0&size=10' \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Crear una cuenta de soporte (ADMIN)
+curl -i -X POST http://localhost:8080/api/usuarios \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"nombre":"Carlos Ruiz","correo":"carlos@example.com","password":"cambiar-esta-clave"}'
+
+# Listar personal de soporte (SOPORTE)
+curl -i 'http://localhost:8080/api/usuarios/soporte?page=0&size=10' \
+  -H "Authorization: Bearer $STAFF_TOKEN"
+
+# Desactivar usuario (ADMIN)
+curl -i -X DELETE http://localhost:8080/api/usuarios/2 \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Las operaciones de borrado devuelven `204 No Content`. Los errores HTTP usan la estructura `ErrorResponse` con timestamp, status, error, message y path.
