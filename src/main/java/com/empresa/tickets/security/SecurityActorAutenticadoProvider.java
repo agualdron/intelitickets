@@ -1,7 +1,6 @@
 package com.empresa.tickets.security;
 
 import com.empresa.tickets.entity.Usuario;
-import com.empresa.tickets.exception.RecursoNoEncontradoException;
 import com.empresa.tickets.repository.UsuarioRepository;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;

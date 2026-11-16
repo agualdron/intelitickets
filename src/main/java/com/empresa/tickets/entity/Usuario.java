@@ -34,6 +34,9 @@ public class Usuario {
 	@Column(nullable = false, length = 20)
 	private Rol rol;
 
+	@Column(nullable = false)
+	private boolean activo = true;
+
 	@Column(name = "fecha_creacion", nullable = false, updatable = false)
 	private LocalDateTime fechaCreacion;
 
@@ -86,8 +89,12 @@ public class Usuario {
 		return rol;
 	}
 
-	public void setRol(Rol rol) {
-		this.rol = rol;
+	public boolean isActivo() {
+		return activo;
+	}
+
+	public void desactivar() {
+		activo = false;
 	}
 
 	public LocalDateTime getFechaCreacion() {

@@ -24,6 +24,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 		String correoNormalizado = correo.trim().toLowerCase(Locale.ROOT);
 		Usuario usuario = usuarioRepository.findByCorreoIgnoreCase(correoNormalizado)
 			.orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+		if (!usuario.isActivo()) {
+			throw new UsernameNotFoundException("Usuario no encontrado");
+		}
 		return User.withUsername(usuario.getCorreo())
 			.password(usuario.getPassword())
 			.authorities("ROLE_" + usuario.getRol().name())

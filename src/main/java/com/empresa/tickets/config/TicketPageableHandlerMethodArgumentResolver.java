@@ -17,7 +17,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 public class TicketPageableHandlerMethodArgumentResolver extends PageableHandlerMethodArgumentResolver {
 
-	private static final int MAX_PAGE_SIZE = 500;
+	private static final int MAX_PAGE_SIZE = 1000;
 
 	public TicketPageableHandlerMethodArgumentResolver(SortArgumentResolver sortResolver) {
 		super(sortResolver);

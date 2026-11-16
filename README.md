@@ -92,6 +92,9 @@ La aplicación lee las siguientes variables. `.env.example` contiene valores de 
 | `AI_API_KEY` | Clave del proveedor de IA | `<api-key>` |
 | `AI_MODEL` | Modelo de chat | `gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Timeout de llamada de IA en milisegundos | `8000` |
+| `CORS_ALLOWED_ORIGIN` | Origin único autorizado para solicitudes CORS del frontend | `http://localhost:5173` |
+
+`CORS_ALLOWED_ORIGIN` debe contener un origin completo, con esquema, host y puerto cuando aplique, sin ruta ni slash final. En producción configura el dominio público del frontend. El backend no usa un origin wildcard ni un valor alternativo.
 
 ## Ejecución local
 
@@ -101,7 +104,7 @@ Desde este directorio:
 cp .env.example .env
 ```
 
-Edita `.env` para establecer un `JWT_SECRET` seguro y, si usarás clasificación IA, una clave válida en `AI_API_KEY`. Inicia PostgreSQL usando Compose:
+Edita `.env` para establecer un `JWT_SECRET` seguro, `CORS_ALLOWED_ORIGIN` con el origin del frontend y, si usarás clasificación IA, una clave válida en `AI_API_KEY`. Inicia PostgreSQL usando Compose:
 
 ```bash
 docker compose up -d postgres

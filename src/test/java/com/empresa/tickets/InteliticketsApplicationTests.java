@@ -1,8 +1,12 @@
 package com.empresa.tickets;
 
 import static org.hamcrest.Matchers.blankOrNullString;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.containsStringIgnoringCase;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,7 +34,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {
 	"security.jwt.secret=phase-two-test-secret-with-at-least-32-bytes",
-	"security.jwt.expiration-ms=86400000"
+	"security.jwt.expiration-ms=86400000",
+	"CORS_ALLOWED_ORIGIN=http://localhost:5173"
 })
 @AutoConfigureMockMvc
 @Import(InteliticketsApplicationTests.RoleProbe.class)
@@ -45,6 +51,36 @@ class InteliticketsApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	void corsPreflightAcceptsConfiguredOriginAndRequiredHeaders() throws Exception {
+		mockMvc.perform(options("/api/auth/login")
+				.header(HttpHeaders.ORIGIN, "http://localhost:5173")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type"))
+			.andExpect(status().isOk())
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"))
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("POST")))
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+				allOf(containsStringIgnoringCase("Authorization"), containsStringIgnoringCase("Content-Type"))));
+	}
+
+	@Test
+	void corsRejectsAnOriginDifferentFromConfiguration() throws Exception {
+		mockMvc.perform(options("/api/auth/login")
+				.header(HttpHeaders.ORIGIN, "https://otro.example")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
+			.andExpect(status().isForbidden())
+			.andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+	}
+
+	@Test
+	void corsDoesNotBypassAuthenticationOnProtectedRoutes() throws Exception {
+		mockMvc.perform(get("/api/tickets").header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"));
 	}
 
 	@Test

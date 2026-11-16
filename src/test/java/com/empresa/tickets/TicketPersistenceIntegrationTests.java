@@ -50,7 +50,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {
 	"security.jwt.secret=phase-four-integration-test-secret-with-32-bytes-minimum",
-	"security.jwt.expiration-ms=86400000"
+	"security.jwt.expiration-ms=86400000",
+	"CORS_ALLOWED_ORIGIN=http://localhost:5173"
 })
 @AutoConfigureMockMvc
 class TicketPersistenceIntegrationTests extends AbstractIntegrationTest {

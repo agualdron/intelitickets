@@ -127,6 +127,9 @@ public class TicketService {
 		if (tecnico.getRol() != Rol.SOPORTE) {
 			throw new ReglaNegocioException("El usuario destino debe tener rol SOPORTE");
 		}
+		if (!tecnico.isActivo()) {
+			throw new ReglaNegocioException("No se puede asignar un usuario inactivo");
+		}
 		var actor = usuarioAutenticado();
 		var estadoAnterior = ticket.getEstado();
 		ticket.asignarTecnico(tecnico);
@@ -189,8 +192,12 @@ public class TicketService {
 		if (usuarioId == null) {
 			return actor;
 		}
-		return usuarioRepository.findById(usuarioId)
+		var solicitante = usuarioRepository.findById(usuarioId)
 				.orElseThrow(() -> new RecursoNoEncontradoException("Usuario solicitante no encontrado"));
+		if (!solicitante.isActivo()) {
+			throw new ReglaNegocioException("No se puede crear un ticket para un usuario inactivo");
+		}
+		return solicitante;
 	}
 
 	private Usuario usuarioAutenticado() {

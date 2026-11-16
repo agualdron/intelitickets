@@ -2,6 +2,7 @@ package com.empresa.tickets.mapper;
 
 import com.empresa.tickets.dto.auth.AuthResponse;
 import com.empresa.tickets.dto.auth.RegisterRequest;
+import com.empresa.tickets.dto.usuario.UsuarioResumenResponse;
 import com.empresa.tickets.entity.Usuario;
 import com.empresa.tickets.entity.enums.Rol;
 import org.springframework.stereotype.Component;
@@ -16,5 +17,9 @@ public class UsuarioMapper {
 	public AuthResponse toAuthResponse(Usuario usuario, String token) {
 		return new AuthResponse(token, "Bearer", usuario.getId(), usuario.getNombre(), usuario.getCorreo(),
 			usuario.getRol());
+	}
+
+	public UsuarioResumenResponse toResumenResponse(Usuario usuario) {
+		return new UsuarioResumenResponse(usuario.getId(), usuario.getNombre(), usuario.getCorreo(), usuario.getRol());
 	}
 }
