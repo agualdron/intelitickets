@@ -92,8 +92,6 @@ La aplicación lee las siguientes variables. `.env.example` contiene valores de 
 | `AI_API_KEY` | Clave del proveedor de IA | `<api-key>` |
 | `AI_MODEL` | Modelo de chat | `gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Timeout de llamada de IA en milisegundos | `8000` |
-| `AI_RETRY_MAX_ATTEMPTS` | Intentos máximos para llamadas de IA con fallos transitorios | `2` |
-| `AI_RETRY_BACKOFF_MS` | Espera inicial entre reintentos, en milisegundos | `250` |
 | `CORS_ALLOWED_ORIGIN` | Origin único autorizado para solicitudes CORS del frontend | `http://localhost:5173` |
 
 `CORS_ALLOWED_ORIGIN` debe contener un origin completo, con esquema, host y puerto cuando aplique, sin ruta ni slash final. En producción configura el dominio público del frontend. El backend no usa un origin wildcard ni un valor alternativo.
@@ -140,8 +138,23 @@ docker compose down
 
 El servicio publica la API en `http://localhost:8080`. `docker compose down -v` también elimina el volumen de datos de PostgreSQL.
 
-## Documentación interactiva
+### Lanzar la aplicación con UI
+El proyecto tiene disponible una interfaz UI desarrollada en react llamada [inteliticketsui](https://github.com/agualdron/inteliticketsui).
+Para lanzar el proyecto junto con la interfaz web usa el archivo `docker-compose-ui.yml`, crea y configura `.env` como se indicó arriba. Luego ejecuta:
 
+```bash
+docker compose -f docker-compose-ui.yml up -d
+```
+Este compose utiliza las imágenes disponibles en DockerHub tanto del backend, como del frontend.
+La interfaz queda disponible en `http://localhost:8081` y la API en `http://localhost:8080`. 
+
+Para detener los servicios:
+
+```bash
+docker compose -f docker-compose-ui.yml down
+```
+
+## Documentación interactiva
 Con la aplicación en ejecución, Swagger UI está disponible en `http://localhost:8080/swagger-ui.html` y el contrato OpenAPI en `http://localhost:8080/v3/api-docs`. La documentación es pública; las operaciones protegidas siguen requiriendo un token JWT.
 
 ## Pruebas y compilación
