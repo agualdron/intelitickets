@@ -2,6 +2,9 @@
 
 API REST para registrar y gestionar tickets de soporte técnico. Usa Java 21, Spring Boot, PostgreSQL, Flyway, autenticación JWT y clasificación asistida por Spring AI con fallback heurístico.
 
+Puedes ver aquí el [Demo en vivo](https://intelitickets.onrender.com/swagger-ui/index.html)
+También puedes ver [un demo con interfaz web](https://agualdron.github.io/inteliticketsui)
+
 ## Arquitectura
 
 ```mermaid
